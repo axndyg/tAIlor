@@ -4,13 +4,13 @@ html, body {
   padding: 0;
   height: 100%;
   background: var(--bg);
-  min-width: 200px;
+  min-width: 400px;
 }
 
 #root {
   background: var(--bg);
   width: 100%;
-  min-width: 200px;
+  min-width: 400px;
   height: 100%;
 }
 
@@ -59,8 +59,7 @@ html, body {
   gap: 8px;
   min-height: 100vh;
   width: 100%;
-  min-width: 200px;
-  max-width: 800px;
+  min-width: 400px;
   padding: 12px 10px 24px;
   background: var(--bg);
   color: var(--text);
@@ -70,9 +69,6 @@ html, body {
   transition: background 0.25s, color 0.25s;
 }
 
-/* Preview-only dock toggle */
-#sidebar[data-dock="left"]  { margin-right: auto; }
-#sidebar[data-dock="right"] { margin-left: auto; }
 
 /* ── Header ── */
 header {
@@ -87,11 +83,7 @@ header {
 .logo-yin  { fill: var(--logo-yin); }
 .logo-yang { fill: var(--logo-yang); }
 
-.header-left {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
+
 
 .dock-btn {
   background: none;
