@@ -4,7 +4,7 @@ import webExtension from 'vite-plugin-web-extension'
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react(), webExtension()],
+  plugins: [react(), webExtension({browser: "firefox"})],
 })
 
 
