@@ -1,0 +1,33 @@
+{
+
+    "manifest_version": 2, 
+    "version": "1.0.0", 
+    "name": "template_name_myResume_myWay", 
+    "description": "placeholder", 
+
+    "sidebar_action": {
+        "default_icon": {
+            "16": "path_to_icon16.png",
+            "32": "path_to_icon32.png"
+        },
+        "default_title": "My sidebar",
+        "default_panel": "sidebar/sidebar.html",
+        "open_at_install":true
+    },
+
+    "permissions": [
+        "activeTab", 
+        "storage" 
+    ], 
+
+    "background": { 
+        "scripts": ["example_background.js"]
+    },
+    "content_scripts": [
+        {
+            "matches": ["*://*/*"],
+            "js": ["example_injection_script.js"]
+        }
+    ]
+
+}

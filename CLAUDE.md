@@ -81,10 +81,12 @@ Status: PENDING USER APPROVAL
 
 - Language: TypeScript — type safety catches errors at write-time
   rather than runtime; central to user's learning goal
-- UI Framework: React — component model maps cleanly to the four-panel
-  UI; aligns with user's desire to deepen existing exposure
+- UI Framework: React — component model maps cleanly to the sidebar UI;
+  aligns with user's desire to deepen existing exposure
 - Extension Target: Firefox (WebExtension API / Manifest V2) — broadest
   compatibility for Firefox; simpler permissions model than Chrome MV3
+- Extension UI Type: sidebar_action — persistent panel alongside the
+  page, not a toolbar popup (browser_action)
 - Build Tool: Vite + vite-plugin-web-extension — handles TypeScript
   compilation and extension bundling without manual webpack config
 - PDF Parsing: pdfjs-dist (Mozilla's PDF.js) — reads PDF text content
@@ -95,21 +97,37 @@ Status: PENDING USER APPROVAL
 Approve or amend before Claude Code treats these as active constraints.
 
 ## Project Purpose
-A Firefox browser extension that accepts a user's LaTeX resume (one or
-more .tex files) plus a job description and an accompanying prompt, then
-uses an LLM to rewrite the resume content within the existing LaTeX
-structure and returns modified .tex output. Success: user pastes
-generated output directly into Overleaf with no manual reformatting.
+A Firefox browser sidebar extension that accepts a user's LaTeX resume
+(.tex files or .pdf fallback) and an accompanying prompt, automatically
+reads the current tab's webpage to extract a job posting via the QUERY
+agent, then uses the CURATE agent to rewrite the resume content within
+the existing LaTeX structure. Returns modified .tex (or .pdf) output for
+direct use in Overleaf with no manual reformatting.
 
 ## Project Description
-Four-panel extension popup UI:
-1. File input panel — accepts multiple .tex files (primary) or a single
-   .pdf (fallback, lower fidelity; user notified of limitation)
-2. Job description panel — paste or upload job posting text
-3. Accompanying prompt panel — freeform user instructions to the LLM
+Sidebar extension UI (sidebar_action, lives alongside the webpage):
+
+1. Resume upload — dropdown accepting multiple .tex files (primary) or
+   a single .pdf (fallback, lower fidelity; user notified of limitation)
+2. Accompanying prompt — freeform text instructions to the LLM
    (e.g. formatting constraints, tone, emphasis)
-4. Output panel — displays LLM-generated modified .tex content; includes
-   model selector and API key settings
+3. Model selector — dropdown to choose which LLM / API to call
+4. API key input — user-supplied key stored in browser.storage.local
+5. Output + download area — displays generated .tex or .pdf; download
+   button for the result
+
+Job description source (implicit, no dedicated panel):
+- Primary: QUERY agent automatically reads the current tab's webpage
+  and extracts the job posting
+- Fallback: if QUERY fails to detect a job posting, a manual input box
+  appears for the user to paste the job description directly
+
+Two-agent architecture:
+- QUERY agent — content script reads current tab DOM; LLM extracts and
+  distills the job posting; instructions live in QUERY_c.md
+- CURATE agent — background script sends resume + job posting + prompt
+  to LLM; rewrites resume within existing LaTeX structure; instructions
+  live in CURATE_c.md
 
 LaTeX path: all uploaded .tex files are bundled and sent as full context.
 LLM rewrites only relevant sections and returns modified file content.
@@ -124,21 +142,32 @@ server. All LLM calls originate from the extension background script.
 > user instruction.
 
 ### Accomplished
-- [ ] To be populated
+- [x] User drafted manifest.json with all five required sections
+  (manifest_version, sidebar_action, permissions, background,
+  content_scripts). Structure is correct.
 
 ### Problems to Polish
-- [ ] To be populated
+- [ ] manifest.json — content_scripts match pattern needs updating from
+  "*://*.mozilla.org/*" to "*://*/*"
+- [ ] manifest.json — placeholder script filenames need renaming:
+  ex.js → background.js, example_injection_script.js → content.js
 
 ### Future Steps
-- [ ] Scaffold Firefox extension with Vite + vite-plugin-web-extension
-- [ ] Build four-panel React UI (file input, job description, prompt,
-  output)
-- [ ] Implement .tex file ingestion and bundling
-- [ ] Implement PDF fallback via PDF.js with fidelity warning
-- [ ] Wire Anthropic API calls from background script
-- [ ] Add API key input and browser.storage.local persistence
-- [ ] Add model selector to output panel
-- [ ] Test LaTeX output round-trip with Overleaf
+- Step 1: Build sidebar GUI shell (layout only, no logic)
+  - [ ] Scaffold Firefox extension with Vite + vite-plugin-web-extension
+  - [ ] Build sidebar React UI (resume upload, prompt, model selector,
+    API key input, output area, QUERY fallback input)
+- Step 2: Wire LLM functionality
+  - [ ] Implement content script to read current tab page content
+  - [ ] Implement .tex file ingestion and bundling
+  - [ ] Implement PDF fallback via PDF.js with fidelity warning
+  - [ ] Wire Anthropic API calls from background script
+  - [ ] Add browser.storage.local persistence for API key
+  - [ ] Connect QUERY agent output to CURATE agent input
+- Step 3: Author agent context files
+  - [ ] Write QUERY_c.md — system prompt for job posting extraction
+  - [ ] Write CURATE_c.md — system prompt for resume rewriting
+  - [ ] Test LaTeX output round-trip with Overleaf
 
 ## Session History
 ### Session 1 — 2026-05-28
@@ -146,3 +175,16 @@ Initial generation. Project defined as Firefox browser extension for
 LLM-assisted LaTeX resume tailoring. Learner context active across
 TypeScript, React, and WebExtension APIs. Technology stack pending
 user approval.
+
+Design clarified via annotated screenshot. Extension confirmed as a
+sidebar (sidebar_action), not a toolbar popup. Job description is read
+automatically from the current tab via QUERY agent; manual paste input
+serves as fallback if detection fails. Original four-panel description
+superseded by revised sidebar layout. Two-agent architecture established
+(QUERY + CURATE), each guided by a dedicated context file. Three-step
+build plan confirmed: (1) GUI shell, (2) LLM wiring, (3) agent prompts.
+
+User read MDN WebExtension tutorial and drafted manifest.json
+independently — all five required sections present and correctly
+structured. Match pattern syntax (scheme://host/path) explained. Two
+fixes identified for next session: match pattern and script filenames.
