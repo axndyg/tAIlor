@@ -11,7 +11,7 @@
             "32": "path_to_icon32.png"
         },
         "default_title": "My sidebar",
-        "default_panel": "sidebar/sidebar.html",
+        "default_panel": "src/sidebar/sidebar.html",
         "open_at_install":true
     },
 
@@ -21,12 +21,12 @@
     ], 
 
     "background": { 
-        "scripts": ["example_background.js"]
+        "scripts": ["src/background/background.ts"]
     },
     "content_scripts": [
         {
             "matches": ["*://*/*"],
-            "js": ["example_injection_script.js"]
+            "js": ["src/content/content.ts"]
         }
     ]
 
