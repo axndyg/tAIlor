@@ -148,14 +148,19 @@ server. All LLM calls originate from the extension background script.
 - [x] Scaffold Firefox extension with Vite + vite-plugin-web-extension
 - [x] Build sidebar React UI (resume upload, prompt, model selector,
   API key input, output area, QUERY fallback input)
+- [x] Style sidebar GUI — sol theme active (amber/violet); five theme
+  variants saved in themes/ (gitignored as local reference)
 
 ### Problems to Polish
 - [ ] `npm run dev` browser launcher fails — web-ext-run attempts to
   open Chromium, which rejects Manifest V2; dev preview workaround is
   navigating to `localhost:5173/src/sidebar/sidebar.html` manually
+- [ ] Logo SVG yin/yang halves are swapped in light mode (--logo-yin
+  and --logo-yang values reversed in the light theme block in App.css)
+- [ ] Dock button only affects localhost preview — Firefox controls
+  actual sidebar panel position; no WebExtension API for this
 
 ### Future Steps
-- Step 1.5: Style the sidebar GUI (CSS layout polish) before wiring logic
 - Step 2: Wire LLM functionality
   - [ ] Implement content script to read current tab page content
   - [ ] Implement .tex file ingestion and bundling
@@ -169,6 +174,20 @@ server. All LLM calls originate from the extension background script.
   - [ ] Test LaTeX output round-trip with Overleaf
 
 ## Session History
+### Session 3 — 2026-05-29
+Styled the sidebar GUI. Five theme variants built (tealcoral, midnight,
+dusk, bloom, sol); sol (amber light / violet dark) selected as active.
+Yin-yang logo made dynamic via CSS variables (--logo-yin, --logo-yang)
+so swapping a theme block in App.css automatically updates logo colors.
+Theme toggle moved onto the logo itself — clicking the yin-yang switches
+light/dark. Eye toggle added to API key input. File list with × removal
+wired via useState. Dock toggle button added (preview only — Firefox
+controls actual sidebar position). useEffect syncs data-theme to
+document.body so root/body background extends the theme color edge to edge.
+
+Logo-yin/yang values are swapped in the light theme block — flagged for
+next session. Next: Step 2, wiring LLM functionality.
+
 ### Session 2 — 2026-05-29
 Vite build pipeline established with vite-plugin-web-extension. Three-entry-point
 source structure created (sidebar/, background/, content/). Sidebar GUI shell
