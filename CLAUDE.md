@@ -145,18 +145,17 @@ server. All LLM calls originate from the extension background script.
 - [x] User drafted manifest.json with all five required sections
   (manifest_version, sidebar_action, permissions, background,
   content_scripts). Structure is correct.
+- [x] Scaffold Firefox extension with Vite + vite-plugin-web-extension
+- [x] Build sidebar React UI (resume upload, prompt, model selector,
+  API key input, output area, QUERY fallback input)
 
 ### Problems to Polish
-- [ ] manifest.json — content_scripts match pattern needs updating from
-  "*://*.mozilla.org/*" to "*://*/*"
-- [ ] manifest.json — placeholder script filenames need renaming:
-  ex.js → background.js, example_injection_script.js → content.js
+- [ ] `npm run dev` browser launcher fails — web-ext-run attempts to
+  open Chromium, which rejects Manifest V2; dev preview workaround is
+  navigating to `localhost:5173/src/sidebar/sidebar.html` manually
 
 ### Future Steps
-- Step 1: Build sidebar GUI shell (layout only, no logic)
-  - [ ] Scaffold Firefox extension with Vite + vite-plugin-web-extension
-  - [ ] Build sidebar React UI (resume upload, prompt, model selector,
-    API key input, output area, QUERY fallback input)
+- Step 1.5: Style the sidebar GUI (CSS layout polish) before wiring logic
 - Step 2: Wire LLM functionality
   - [ ] Implement content script to read current tab page content
   - [ ] Implement .tex file ingestion and bundling
@@ -170,6 +169,20 @@ server. All LLM calls originate from the extension background script.
   - [ ] Test LaTeX output round-trip with Overleaf
 
 ## Session History
+### Session 2 — 2026-05-29
+Vite build pipeline established with vite-plugin-web-extension. Three-entry-point
+source structure created (sidebar/, background/, content/). Sidebar GUI shell
+built in App.tsx with all six sections from spec: file upload (.tex/.pdf),
+tailor instructions, model selector, API key, output area, fallback job
+description input. LESSONPLAN.md created (overdue from Session 1).
+
+Key friction point: npm run dev triggers web-ext-run which tries to launch
+Chromium — fails because MV2 is unsupported in Chrome. Workaround established:
+use localhost:5173/src/sidebar/sidebar.html directly. npm audit warnings noted
+as dev-only, documented in LESSONPLAN.md.
+
+Next session: CSS styling (Step 1.5) before wiring LLM logic.
+
 ### Session 1 — 2026-05-28
 Initial generation. Project defined as Firefox browser extension for
 LLM-assisted LaTeX resume tailoring. Learner context active across
