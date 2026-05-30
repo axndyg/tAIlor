@@ -2,15 +2,11 @@
 
     "manifest_version": 2, 
     "version": "1.0.0", 
-    "name": "template_name_myResume_myWay", 
-    "description": "placeholder", 
+    "name": "tAIlor",
+    "description": "AI-assisted LaTeX resume tailoring sidebar",
 
     "sidebar_action": {
-        "default_icon": {
-            "16": "path_to_icon16.png",
-            "32": "path_to_icon32.png"
-        },
-        "default_title": "My sidebar",
+        "default_title": "tAIlor",
         "default_panel": "src/sidebar/sidebar.html",
         "open_at_install":true
     },

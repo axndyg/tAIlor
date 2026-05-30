@@ -1,4 +1,4 @@
-# CLAUDE.md — Resume Tailor
+# CLAUDE.md — tAIlor
 
 ## Living Document Directive
 Maintain this document across sessions. At session end, propose updates
