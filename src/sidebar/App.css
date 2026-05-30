@@ -1,3 +1,9 @@
+@import url('https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&display=swap');
+
+body {
+  font-family: 'Atkinson Hyperlegible', sans-serif;
+}
+
 /* ── Global resets ── */
 html, body {
   margin: 0;
@@ -20,36 +26,32 @@ html, body {
   padding: 0;
 }
 
-/* ── Light — white / golden amber ── */
-/* sol: yin #D97706, yang #7C3AED */
 [data-theme="light"] {
-  --bg:           #FFFFFF;
-  --surface:      #FEFEF9;
-  --accent:       #D97706;
-  --accent-soft:  #FEF3C7;
-  --text:         #1C1005;
-  --text-muted:   #92632A;
-  --border:       #FDE68A;
-  --shadow:       rgba(217, 119, 6, 0.14);
-  --logo-outline: #FFFFFF;
-  --logo-yin:     #7C3AED;
-  --logo-yang:    #D97706;
+  --bg:           #F7F8FA; /* Cool white stone */
+  --surface:      #FFFFFF;
+  --accent:       #1E293B; /* Deep Indigo-Soot */
+  --accent-soft:  #EEF2F6;
+  --text:         #0F172A;
+  --text-muted:   #64748B;
+  --border:       #E2E8F0;
+  --shadow:       rgba(30, 41, 59, 0.04);
+  --ai:           #F59E0B;
+  --logo:         #EEF2F6;
+  --logo-soft:    #1E293B; /* Deep Indigo-Soot */
 }
 
-/* ── Dark — near-black / violet ── */
-/* sol: yin #D97706, yang #7C3AED */
 [data-theme="dark"] {
-  --bg:           #0D0D0D;
-  --surface:      #171717;
-  --accent:       #7C3AED;
-  --accent-soft:  rgba(124, 58, 237, 0.12);
-  --text:         #FDF8F0;
-  --text-muted:   #8A8280;
-  --border:       #222222;
-  --shadow:       rgba(124, 58, 237, 0.20);
-  --logo-outline: #0D0D0D;
-  --logo-yin:     #D97706;
-  --logo-yang:    #7C3AED;
+  --bg:           #0B0F17; /* Midnight ink well */
+  --surface:      #131924;
+  --accent:       #94A3B8; /* Misty gray-blue */
+  --accent-soft:  rgba(148, 163, 184, 0.08);
+  --text:         #F8FAFC;
+  --text-muted:   #64748B;
+  --border:       #1E293B;
+  --shadow:       rgba(0, 0, 0, 0.5);
+  --ai:           #F59E0B;
+  --logo:         #1E293B; /* Deep Indigo-Soot */
+  --logo-soft:    #EEF2F6; /* Deep Indigo-Soot */
 }
 
 /* ── Sidebar ── */
@@ -80,11 +82,6 @@ header {
   margin-bottom: 2px;
 }
 
-.logo-yin  { fill: var(--logo-yin); }
-.logo-yang { fill: var(--logo-yang); }
-
-
-
 .dock-btn {
   background: none;
   border: none;
@@ -102,10 +99,17 @@ header {
 }
 
 .wordmark {
+  font-family:'Atkinson Hyperlegible', sans-serif;
   font-weight: 700;
   font-size: 13px;
   letter-spacing: -0.01em;
   color: var(--text);
+}
+
+.wordmark-ai {
+  color: var(--ai);
+  letter-spacing: 0.04em;
+
 }
 
 .logo-toggle {
@@ -115,13 +119,11 @@ header {
   padding: 0;
   display: flex;
   align-items: center;
-  color: var(--logo-outline);
-  transition: transform 0.35s ease, opacity 0.2s;
+  transition: opacity 0.2s;
 }
 
 .logo-toggle:hover {
-  opacity: 0.8;
-  transform: rotate(180deg);
+  opacity: 0.7;
 }
 
 /* ── Sections ── */

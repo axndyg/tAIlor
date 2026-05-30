@@ -5,7 +5,6 @@ function App() {
   const [theme, setTheme] = useState<'light' | 'dark'>('light')
   const [files, setFiles] = useState<File[]>([])
   const [showKey, setShowKey] = useState(false)
-  const [dock, setDock] = useState<'left' | 'right'>('left')
 
   useEffect(() => {
     document.body.setAttribute('data-theme', theme)
@@ -25,31 +24,24 @@ function App() {
   }
 
   return ( 
-    <div id="sidebar" data-theme={theme} data-dock={dock}>
+    <div id="sidebar" data-theme={theme}>
       <header>
-        <div className="header-left">
-          <button
-            className="dock-btn"
-            onClick={() => setDock(d => d === 'left' ? 'right' : 'left')}
-            aria-label="toggle dock side"
-          >
-            {dock === 'left' ? '▶' : '◀'}
-          </button>
-          <span className="wordmark">myResume myWay</span>
-        </div>
-        {/* yin-yang is the theme toggle: Blue = Berkeley Blue, Gold = Cal Gold, outline follows theme */}
+        <span className="wordmark">t<span className="wordmark-ai">AI</span>lor</span>
         <button
           className="logo-toggle"
           onClick={() => setTheme(t => t === 'light' ? 'dark' : 'light')}
           aria-label="toggle theme"
         >
           <svg viewBox="0 0 200 200" width="30" height="30" aria-hidden="true">
-            <circle cx="100" cy="100" r="90" className="logo-yin" />
-            <path
-              d="M 100 10 A 90 90 0 0 1 100 190 A 45 45 0 0 0 100 100 A 45 45 0 0 1 100 10 Z"
-              className="logo-yang"
-            />
-            <circle cx="100" cy="100" r="90" fill="none" stroke="currentColor" strokeWidth="8" />
+            <circle cx="100" cy="100" r="90" fill="var(--logo-soft)" stroke="var(--border)" strokeWidth="8" />
+            <text
+              x="100" y="138"
+              textAnchor="middle"
+              fontFamily="'Atkinson Hyperlegible', sans-serif"
+              fontWeight="700"
+              fontSize="130"
+              fill="var(--logo)"
+            >t</text>
           </svg>
         </button>
       </header>
