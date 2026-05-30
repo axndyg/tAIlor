@@ -32,17 +32,7 @@ function App() {
           onClick={() => setTheme(t => t === 'light' ? 'dark' : 'light')}
           aria-label="toggle theme"
         >
-          <svg viewBox="0 0 200 200" width="30" height="30" aria-hidden="true">
-            <circle cx="100" cy="100" r="90" fill="var(--logo-soft)" stroke="var(--border)" strokeWidth="8" />
-            <text
-              x="100" y="138"
-              textAnchor="middle"
-              fontFamily="'Atkinson Hyperlegible', sans-serif"
-              fontWeight="700"
-              fontSize="130"
-              fill="var(--logo)"
-            >t</text>
-          </svg>
+          <img src={theme === 'light' ? '../../logo/tailor_light.png' : '../../logo/tailor_dark.png'} height="30" width="30" />
         </button>
       </header>
 
