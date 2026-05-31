@@ -11,6 +11,7 @@ node_modules
 backup_dist
 dist
 dist-ssr
+tailor.xpi
 *.local
 
 # Editor directories and files
