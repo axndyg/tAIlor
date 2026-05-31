@@ -304,6 +304,38 @@ select {
   background: var(--accent-soft);
 }
 
+/* ── Provider toggle ── */
+.provider-toggle {
+  display: flex;
+  gap: 0;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 3px;
+}
+
+.provider-btn {
+  flex: 1;
+  background: none;
+  border: none;
+  border-radius: 16px;
+  padding: 5px 0;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background 0.18s, color 0.18s;
+}
+
+.provider-btn:hover {
+  color: var(--text);
+}
+
+.provider-btn.active {
+  background: var(--accent);
+  color: var(--bg);
+}
+
 /* ── API key visibility toggle ── */
 .key-wrap {
   position: relative;
@@ -352,3 +384,16 @@ select {
   font-weight: 600;
   color: #F59E0B;
 }
+
+/* ── Querying Wiring ── */
+  .field-error {
+    font-size: 11px;
+    color: #EF4444;   /* same red your file-remove × hover uses */
+  }
+
+
+  input.field-border-error,
+  .field-border-error {
+    border-color: #EF4444;
+  
+  }

@@ -18,7 +18,14 @@
 
     "permissions": [
         "activeTab",
-        "storage"
+        "storage",
+        "https://openrouter.ai/api/*",
+        "https://api.anthropic.com/v1/*",
+        "https://api.openai.com/v1/*",
+        "https://generativelanguage.googleapis.com/*",
+        "https://api.mistral.ai/v1/*",
+        "https://api.cohere.com/v2/*",
+        "https://api.groq.com/openai/v1/*"
     ],
 
     "background": {
