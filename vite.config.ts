@@ -8,16 +8,6 @@ export default defineConfig({
     react(), 
     webExtension({
       browser: "firefox",
-      // Force all generated background/content scripts to bundle into standard script strings
-      scriptViteConfig: {
-        build: {
-          rollupOptions: {
-            output: {
-              format: "iife", 
-            }
-          }
-        }
-      }
     })
   ],
 })

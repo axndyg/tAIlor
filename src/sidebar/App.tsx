@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react'
 import './App.css'
+import tailorLight from '../../logo/tailor_light.png'
+import tailorDark from '../../logo/tailor_dark.png'
 
 function App() {
   const [theme, setTheme] = useState<'light' | 'dark'>('light')
@@ -32,7 +34,7 @@ function App() {
           onClick={() => setTheme(t => t === 'light' ? 'dark' : 'light')}
           aria-label="toggle theme"
         >
-          <img src={theme === 'light' ? '../../logo/tailor_light.png' : '../../logo/tailor_dark.png'} height="30" width="30" />
+          <img src={theme === 'light' ? tailorLight : tailorDark} height="30" width="30" />
         </button>
       </header>
 

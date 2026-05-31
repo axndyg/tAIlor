@@ -150,11 +150,18 @@ server. All LLM calls originate from the extension background script.
   API key input, output area, QUERY fallback input)
 - [x] Style sidebar GUI — sol theme active (amber/violet); five theme
   variants saved in themes/ (gitignored as local reference)
+- [x] Build pipeline fixed — `npm run build:xpi` produces a loadable
+  `tailor.xpi`; logo images bundled via ES module imports; background
+  script switched to `background.page` format; gecko id added
 
 ### Problems to Polish
-- [ ] `npm run dev` browser launcher fails — web-ext-run attempts to
-  open Chromium, which rejects Manifest V2; dev preview workaround is
-  navigating to `localhost:5173/src/sidebar/sidebar.html` manually
+- [ ] `npm run dev` UI preview: navigate to
+  `localhost:5173/src/sidebar/sidebar.html` — web-ext-run fails
+  (Chromium rejects MV2); real extension testing uses `npm run build:xpi`
+  then load `tailor.xpi` in about:debugging
+- [ ] iCloud Drive interferes with Firefox loading unpacked `dist/`
+  directly — workaround is `npm run build:xpi`; permanent fix is moving
+  project out of `~/Documents/` to a non-iCloud path
 - [ ] Logo SVG yin/yang halves are swapped in light mode (--logo-yin
   and --logo-yang values reversed in the light theme block in App.css)
 - [ ] Dock button only affects localhost preview — Firefox controls
@@ -174,6 +181,27 @@ server. All LLM calls originate from the extension background script.
   - [ ] Test LaTeX output round-trip with Overleaf
 
 ## Session History
+### Session 4 — 2026-05-30
+Resolved build pipeline and Firefox extension loading issues. Root cause
+of all "can't find file" errors: iCloud Drive interferes with Firefox's
+unpacked extension directory loader for freshly-written files. Workaround:
+`npm run build:xpi` packages dist/ into tailor.xpi which Firefox loads fine.
+
+Key fixes applied this session:
+- Logo images switched from raw string literals to ES module imports so
+  Vite knows to bundle them into dist/
+- Background script changed from `background.scripts` array to
+  `background.page` format — Vite's IIFE output conflicted with Firefox's
+  auto-generated background page; using a real HTML entry point sidesteps this
+- `public/` folder restored (favicon.svg, icons.svg must live there to
+  reach dist/ — Vite only copies public/ verbatim, not arbitrary files)
+- `browser_specific_settings` gecko id added to manifest
+- Learned: vite-plugin-web-extension only outputs files it explicitly
+  processes as TypeScript entry points; everything else must be in public/
+
+Next: Step 2, wiring LLM functionality. Recommend moving project out of
+~/Documents/ to a non-iCloud path before starting Step 2.
+
 ### Session 3 — 2026-05-29
 Styled the sidebar GUI. Five theme variants built (tealcoral, midnight,
 dusk, bloom, sol); sol (amber light / violet dark) selected as active.
