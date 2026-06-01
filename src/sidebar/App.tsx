@@ -3,60 +3,54 @@ import './App.css'
 import tailorLight from '../../logo/tailor_light.png'
 import tailorDark from '../../logo/tailor_dark.png'
 
+// Describes the response shape that comes back from the background router.
+interface TailorResponse {
+  success: boolean
+  text?: string      // ? means optional — present only on success
+  error?: string     // present only on failure  }
+}
+  // Tells the type-checker the runtime global `browser` exists, and the one
+  // method we use on it. Mirrors the declare block in background.ts.
+declare const browser: {
+    runtime: {
+    sendMessage(message: unknown): Promise<TailorResponse>
+  }
+}
+
 // New concept: const with 'as const' — freezes the array so TypeScript
 // infers literal types instead of widening to string[].
 const OPENROUTER_MODELS = [
-  // Free tier — no cost, rate-limited
-  { value: 'meta-llama/llama-3.1-8b-instruct:free',   label: 'Llama 3.1 8B',          free: true  },
-  { value: 'meta-llama/llama-3.2-3b-instruct:free',   label: 'Llama 3.2 3B',          free: true  },
-  { value: 'google/gemma-3-12b-it:free',              label: 'Gemma 3 12B',            free: true  },
-  { value: 'google/gemma-3-27b-it:free',              label: 'Gemma 3 27B',            free: true  },
-  { value: 'mistralai/mistral-7b-instruct:free',      label: 'Mistral 7B',             free: true  },
-  { value: 'qwen/qwen-2.5-7b-instruct:free',          label: 'Qwen 2.5 7B',            free: true  },
+  // Free tier — no cost, rate-limited. Curated to models large enough to
+  // preserve LaTeX structure reliably.
   { value: 'deepseek/deepseek-chat:free',             label: 'DeepSeek V3',            free: true  },
   { value: 'deepseek/deepseek-r1:free',               label: 'DeepSeek R1',            free: true  },
-  { value: 'microsoft/phi-3-medium-128k-instruct:free', label: 'Phi-3 Medium 128K',   free: true  },
-  { value: 'openrouter/owl-alpha',                      label: 'Owl Alpha',              free: true  },
-  { value: 'nvidia/nemotron-3-super-120b-a12b:free',    label: 'Nemotron 3 Super 120B',  free: true  },
-  { value: 'openai/gpt-oss-120b:free',                  label: 'GPT-OSS 120B',           free: true  },
-  { value: 'openai/gpt-oss-20b:free',                   label: 'GPT-OSS 20B',            free: true  },
-  { value: 'google/gemma-4-31b-it:free',                label: 'Gemma 4 31B',            free: true  },
-  // Paid tier
+  { value: 'google/gemma-3-27b-it:free',              label: 'Gemma 3 27B',            free: true  },
+  { value: 'openai/gpt-oss-120b:free',                label: 'GPT-OSS 120B',           free: true  },
+  // Paid tier — one strong option per family
   { value: 'anthropic/claude-opus-4',                 label: 'Claude Opus 4',          free: false },
   { value: 'anthropic/claude-sonnet-4',               label: 'Claude Sonnet 4',        free: false },
-  { value: 'anthropic/claude-haiku-3-5',              label: 'Claude Haiku 3.5',       free: false },
   { value: 'openai/gpt-4o',                           label: 'GPT-4o',                 free: false },
-  { value: 'openai/gpt-4o-mini',                      label: 'GPT-4o Mini',            free: false },
-  { value: 'openai/o3-mini',                          label: 'o3-mini',                free: false },
   { value: 'google/gemini-2.5-pro',                   label: 'Gemini 2.5 Pro',         free: false },
-  { value: 'google/gemini-2.5-flash',                 label: 'Gemini 2.5 Flash',       free: false },
-  { value: 'meta-llama/llama-3.1-70b-instruct',       label: 'Llama 3.1 70B',          free: false },
   { value: 'meta-llama/llama-3.1-405b-instruct',      label: 'Llama 3.1 405B',         free: false },
   { value: 'mistralai/mistral-large',                 label: 'Mistral Large',          free: false },
-  { value: 'cohere/command-r-plus',                   label: 'Command R+',             free: false },
 ] as const
 
 const DIRECT_MODELS = [
   // Anthropic
   { value: 'claude-opus-4-8',         label: 'Claude Opus 4',       provider: 'Anthropic' },
   { value: 'claude-sonnet-4-6',       label: 'Claude Sonnet 4',     provider: 'Anthropic' },
-  { value: 'claude-haiku-4-5',        label: 'Claude Haiku 4',      provider: 'Anthropic' },
   // OpenAI
   { value: 'gpt-4o',                  label: 'GPT-4o',              provider: 'OpenAI'    },
   { value: 'gpt-4o-mini',             label: 'GPT-4o Mini',         provider: 'OpenAI'    },
-  { value: 'o3-mini',                 label: 'o3-mini',             provider: 'OpenAI'    },
   // Google
   { value: 'gemini-2.5-pro',          label: 'Gemini 2.5 Pro',      provider: 'Google'    },
   { value: 'gemini-2.5-flash',        label: 'Gemini 2.5 Flash',    provider: 'Google'    },
   // Mistral
   { value: 'mistral-large-latest',    label: 'Mistral Large',       provider: 'Mistral'   },
-  { value: 'mistral-small-latest',    label: 'Mistral Small',       provider: 'Mistral'   },
   // Cohere
   { value: 'command-r-plus',          label: 'Command R+',          provider: 'Cohere'    },
-  { value: 'command-r',               label: 'Command R',           provider: 'Cohere'    },
   // Groq
   { value: 'llama-3.1-70b-versatile', label: 'Llama 3.1 70B',       provider: 'Groq'      },
-  { value: 'mixtral-8x7b-32768',      label: 'Mixtral 8x7B',        provider: 'Groq'      },
 ] as const
 
 type ProviderMode = 'openrouter' | 'direct'
@@ -72,6 +66,59 @@ function groupBy<T>(items: readonly T[], key: keyof T): Map<string, T[]> {
   return map
 }
 
+// The stable directive sent in every request's `system` field — mirror of the
+// Directive section in CURATE_c.md. The variable inputs (resume, job
+// description, instructions) are assembled separately in assembleUserMessage.
+// New concept: a backtick `template literal` preserves newlines verbatim, so
+// the prompt's formatting survives exactly as written.
+const CURATE_SYSTEM_PROMPT = `You are a resume tailorer. Your role is to reframe a provided resume toward a specific job description — without inventing experience or removing existing content.
+
+Core principle: Every bullet point in the resume represents a real strength. Your job is to identify which angle of that strength is most relevant to the job description, and reframe the bullet to lead with that angle, using the language and priorities of the job posting.
+
+Reframing rules:
+- If a strength maps directly to the job, foreground it explicitly using the job posting's vocabulary.
+- If a strength does not map directly, find the transferable angle and frame it toward the job's domain. Do not omit it.
+- Where a bullet already leads with a concrete result, preserve that. Otherwise, prefer leading with the outcome the job posting would value, followed by how it was achieved.
+
+Hard constraints:
+- Never fabricate experience, metrics, skills, or technologies not present in the original resume.
+- Do not alter dates, job titles, company names, degrees, or institution names.
+- Do not rename sections, reorder sections, or change the document structure.
+
+LaTeX preservation:
+- The resume is provided as a single .tex file or a collection of .tex files.
+- Preserve the document's preamble, packages, custom commands/macros, section structure, and ordering exactly.
+- Modify only the text content of bullets, summaries, and descriptions.
+- Produce a single resulting .tex file. If multiple files were provided, merge them into one self-contained document that compiles independently.
+
+Output format — read carefully:
+Output only the raw LaTeX source of the single resulting .tex file. No markdown code fences. No preamble sentence, no commentary, no explanation, no closing remark. Your entire response, from the first character to the last, must be valid LaTeX that compiles as-is in Overleaf.`
+
+async function assembleUserMessage(
+  files: File[],
+  jobDescription: string,
+  instructions: string,
+): Promise<string> {
+  const parts = await Promise.all(
+    files.map(async f => ({ name: f.name, content: await f.text() }))
+  )
+  const resumeBlock = parts
+    .map(p => `% --- file: ${p.name} ---\n${p.content}`)
+    .join('\n\n')
+
+  const instructionsBlock = instructions === ''
+    ? ''
+    : `\n\n<user_instructions>\n${instructions}\n</user_instructions>`
+
+  return `<resume>
+  ${resumeBlock}
+  </resume>
+
+  <job_description>
+  ${jobDescription}
+  </job_description>${instructionsBlock}`
+  }
+
 function App() {
   const [theme, setTheme] = useState<'light' | 'dark'>('light')
   const [files, setFiles] = useState<File[]>([])
@@ -82,8 +129,10 @@ function App() {
   const [instructions, setInstructions] = useState<string>('')
   const [apiKey, setApiKey] = useState<string>('')
   const [jobDescription, setJobDescription] = useState<string>('')
+
+  const [output, setOutput] = useState<string>('')
   
-  const [errors, setErrors] = useState<{ files?: string; apiKey?: string }>({})
+  const [errors, setErrors] = useState<{ files?: string; apiKey?: string; llmCall?: string }>({})
 
 
   function switchProvider(mode: ProviderMode) {
@@ -108,15 +157,27 @@ function App() {
     setFiles(prev => prev.filter((_, i) => i !== index))
   }
 
-  function handleTailor() {
+  async function handleTailor() {
     const next: typeof errors = {}
     if (files.length === 0)   next.files  = 'Upload at least one resume file.'
     if (apiKey.trim() === '') next.apiKey = 'Enter your API key.'
 
     setErrors(next)                          // replaces the whole object
     if (Object.keys(next).length > 0) return // any error → stop
-
-    console.log({ files, instructions, model, apiKey, jobDescription })
+    
+    const userMessage = await assembleUserMessage(files, jobDescription, instructions)
+    const response = await browser.runtime.sendMessage({
+      type: 'TAILOR_REQUEST',
+      model, providerMode, apiKey,
+      systemPrompt: CURATE_SYSTEM_PROMPT,   // the constant
+      userMessage,
+    })
+    if (response.success) { 
+      setOutput(response.text ?? '')
+    }
+    else { 
+      setErrors({ ...next, llmCall: response.error ?? '' })
+    }
   }
 
   return ( 
@@ -239,7 +300,12 @@ function App() {
 
       <section>
         <span className="section-label">Output</span>
-        <div className="output-area" />
+        <textarea 
+        className={`output-area ${errors.llmCall ? "field-border-error" : ""}`}
+        value={errors.llmCall ? errors.llmCall : output} 
+        readOnly 
+        />
+
         <button className="secondary-btn">↓ Download</button>
       </section>
 
