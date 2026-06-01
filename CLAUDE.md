@@ -161,6 +161,9 @@ server. All LLM calls originate from the extension background script.
   state, red border on failure, self-clears each run
 - [x] Prune model lists to curated, capable options per provider
 - [x] Author CURATE_c.md (system directive + user-message assembly spec)
+- [x] Persist sidebar state (API key, uploaded resumes, theme) in
+  browser.storage.local; refactored files state from File[] →
+  {name, content}[] for serializability
 
 ### Problems to Polish
 - [ ] `npm run dev` UI preview: navigate to
@@ -183,7 +186,7 @@ server. All LLM calls originate from the extension background script.
   - [x] Display tailored output / errors in the output box
   - [ ] Implement content script to read current tab page content (QUERY)
   - [ ] Implement PDF fallback via PDF.js with fidelity warning
-  - [ ] Add browser.storage.local persistence for API key
+  - [x] Add browser.storage.local persistence (API key, uploaded files, theme)
   - [ ] Connect QUERY agent output to CURATE agent input
   - [ ] Wire the Download button to save the output .tex
 - Step 3: Author agent context files
@@ -192,6 +195,27 @@ server. All LLM calls originate from the extension background script.
   - [ ] Test LaTeX output round-trip with Overleaf
 
 ## Session History
+### Session 6 — 2026-06-01
+Added `browser.storage.local` persistence for three pieces of sidebar state.
+The hand-written `declare const browser` block was widened to type
+`storage.local.get/set` over `{ apiKey, files, theme }`. API key saves on the
+Tailor click and loads on mount; theme saves on the logo toggle; files save on
+add/remove. Persisting files forced a refactor of `files` state from `File[]`
+to `{ name, content }[]` — `File` objects aren't serializable, so resumes are
+stored as pre-read text (which also let `assembleUserMessage` drop its per-call
+`File.text()`).
+
+Teaching highlights: serializability (why a live `File` can't be stored);
+"React state is a snapshot, not a live variable" (stale-`files` save bug — fixed
+by computing `updated` once and using it for both `setState` and the storage
+write); spread-vs-nest (`[...files, ...newFiles]`); and the recurring lesson that
+the narrow hand-written `browser` declaration must be widened for each new API
+surface. Several bugs were copy-paste setter/key mismatches (`setApiKey` vs
+`setFiles`, `get('apiKey')` vs `get('theme')`) — caught via `tsc`.
+
+Next: QUERY content script (read current tab DOM) + `QUERY_c.md`, and wiring the
+Download button to save output `.tex`. PDF.js fallback still open.
+
 ### Session 5 — 2026-06-01
 Wired the LLM round-trip end to end (Step 2 core). The sidebar's
 `handleTailor` now reads uploaded `.tex` files (`File.text()` + `Promise.all`),
