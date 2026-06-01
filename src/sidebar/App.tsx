@@ -11,6 +11,14 @@ interface TailorResponse {
 }
   // Tells the type-checker the runtime global `browser` exists, and the one
   // method we use on it. Mirrors the declare block in background.ts.
+
+interface QueryResponse {
+  success: boolean
+  text?: string   // present on a good read
+  url?: string    // the page we read it from
+  error?: string  // present if the read failed
+}
+
 declare const browser: {
     runtime: {
       sendMessage(message: unknown): Promise<TailorResponse>
@@ -30,6 +38,14 @@ declare const browser: {
              }): 
             Promise<void>
       }
+    };
+    tabs: { 
+      query(queryInfo: {
+        active: boolean;
+        currentWindow: boolean
+      }): 
+      Promise<{ id?: number }[]>
+      sendMessage(tabId: number, message: unknown): Promise<QueryResponse>
     }
 }
 
@@ -141,11 +157,11 @@ function App() {
 
   const [instructions, setInstructions] = useState<string>('')
   const [apiKey, setApiKey] = useState<string>('')
-  const [jobDescription, setJobDescription] = useState<string>('')
+  const [jobDescription, setJobDescription]= useState<string>('')
 
   const [output, setOutput] = useState<string>('')
   
-  const [errors, setErrors] = useState<{ files?: string; apiKey?: string; llmCall?: string }>({})
+  const [errors, setErrors] = useState<{ files?: string; apiKey?: string; llmCall?: string; queryCall?: string }>({})
 
 
   function switchProvider(mode: ProviderMode) {
@@ -175,11 +191,28 @@ function App() {
   }, [])
 
   useEffect(() => {
-    async function loadFiles() { 
+    async function loadFiles() {
       const callLocal = await browser.storage.local.get('files')
-      setFiles(callLocal.files ? callLocal.files : []) 
+      setFiles(callLocal.files ? callLocal.files : [])
     }
     loadFiles()
+  }, [])
+
+  // On open, auto-read the current tab as the job description (design B): fill
+  // the editable box so the user can eyeball/edit before tailoring. If the page
+  // can't be read, surface an error asking them to paste it instead.
+  // On open, the auto-read is a *convenience fill*, not the primary path:
+  // pasting wins. So we only populate an EMPTY box, and stay silent if the read
+  // fails (no scary warning at rest — the user can just paste).
+  useEffect(() => {
+    async function detectJob() {
+      const text = await queryPage()
+      if (!text) return
+      // Functional updater reads the *current* value, not the stale mount-time
+      // snapshot — so we never clobber text the user pasted while we were reading.
+      setJobDescription(prev => (prev === '' ? text : prev))
+    }
+    detectJob()
   }, [])
 
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -195,6 +228,7 @@ function App() {
     );
     const updated = [...files, ...newFiles]
     setFiles(updated)
+    setErrors((prevErrors => ({...prevErrors, files: ''})))
     e.target.value = ''
 
     await browser.storage.local.set({ files: updated })
@@ -206,16 +240,51 @@ function App() {
     await browser.storage.local.set({ files: updated })
   }
 
+  // QUERY agent, Stage A caller: ask the active tab's content script to read
+  // its DOM. Returns the page text, or undefined if we couldn't read it.
+  async function queryPage(): Promise<string | undefined> {
+    const activeTab = await browser.tabs.query({ active: true, currentWindow: true })
+    // ?. handles an empty array; === undefined (not !tabId) so a real id of 0 survives.
+    const tabId = activeTab[0]?.id
+    if (tabId === undefined) return
+
+    try {
+      const response = await browser.tabs.sendMessage(tabId, { type: 'QUERY_REQUEST' })
+      return response.success ? response.text : undefined
+    } catch {
+      // sendMessage rejects with "receiving end does not exist" when the page
+      // has no content script — about: pages, PDFs, or a tab opened before the
+      // extension loaded. Treat as "couldn't read" → fall back to manual paste.
+      return undefined
+    }
+  }
+
+
   async function handleTailor() {
     await browser.storage.local.set({apiKey: apiKey})
     const next: typeof errors = {}
     if (files.length === 0) next.files  = 'Upload at least one resume file.'
     if (apiKey.trim() === '') next.apiKey = 'Enter your API key.'
 
-    setErrors(next)                          // rweplaces the whole object
+    // The box is the source of truth. If it's empty, lazily auto-read the page
+    // before giving up. Hold the result in a LOCAL var: setJobDescription won't
+    // update the `jobDescription` variable within this same run (React state is
+    // a snapshot), so the request below must read the local value, not state.
+    let job = jobDescription.trim()
+    if (job === '' && files.length !== 0 && apiKey.trim() !== '') {
+      const detected = await queryPage()
+      if (detected) {
+        job = detected
+        setJobDescription(detected)   // reflect it in the box for the user
+      } else {
+        next.queryCall = 'No job description detected — paste it below.'
+      }
+    }
+
+    setErrors(next)                          // replaces the whole object
     if (Object.keys(next).length > 0) return // any error → stop
 
-    const userMessage = await assembleUserMessage(files, jobDescription, instructions)
+    const userMessage = await assembleUserMessage(files, job, instructions)
     const response = await browser.runtime.sendMessage({
       type: 'TAILOR_REQUEST',
       model, providerMode, apiKey,
@@ -326,7 +395,10 @@ function App() {
             placeholder="sk-..."
             className={errors.apiKey ? "field-border-error" : ""}
             value={apiKey}
-            onChange={e => setApiKey(e.target.value)}
+            onChange={(e) => {
+              setApiKey(e.target.value);
+              setErrors((prevErrors) => ({ ...prevErrors, apiKey: '' }));
+            }}
            />
           <button
             className="eye-btn"
@@ -350,6 +422,18 @@ function App() {
         {errors.apiKey && <p className="field-error">{errors.apiKey}</p>}
       </section>
 
+      <section className="fallback-section">
+        <span className="section-label">Job Description</span>
+        {errors.queryCall && (
+          <span className="fallback-label">⚠ {errors.queryCall}</span>
+        )}
+        <textarea
+          placeholder="paste job description here..."
+          value={jobDescription}
+          onChange={e => setJobDescription(e.target.value)}
+        />
+      </section>
+
       <button className="primary-btn" onClick={() =>  handleTailor()}>Tailor Resume</button>
 
       <section>
@@ -361,15 +445,6 @@ function App() {
         />
 
         <button className="secondary-btn">↓ Download</button>
-      </section>
-
-      <section className="fallback-section">
-        <span className="fallback-label">⚠ No job posting detected</span>
-        <textarea 
-          placeholder="paste job description here..." 
-          value={jobDescription}
-          onChange={e => setJobDescription(e.target.value)}
-          />
       </section>
 
     </div>
