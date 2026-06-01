@@ -13,8 +13,24 @@ interface TailorResponse {
   // method we use on it. Mirrors the declare block in background.ts.
 declare const browser: {
     runtime: {
-    sendMessage(message: unknown): Promise<TailorResponse>
-  }
+      sendMessage(message: unknown): Promise<TailorResponse>
+      };
+    storage: { 
+      local: { 
+          get(key: string): 
+            Promise<{
+              apiKey?: string;
+              files?: {name: string, content: string}[];
+              theme?: string;    
+            }> 
+          set(items: { 
+              apiKey?: string;
+              files?: {name: string, content: string}[];
+              theme?: string; 
+             }): 
+            Promise<void>
+      }
+    }
 }
 
 // New concept: const with 'as const' — freezes the array so TypeScript
@@ -95,14 +111,11 @@ Output format — read carefully:
 Output only the raw LaTeX source of the single resulting .tex file. No markdown code fences. No preamble sentence, no commentary, no explanation, no closing remark. Your entire response, from the first character to the last, must be valid LaTeX that compiles as-is in Overleaf.`
 
 async function assembleUserMessage(
-  files: File[],
+  files: {name: string, content: string}[],
   jobDescription: string,
   instructions: string,
 ): Promise<string> {
-  const parts = await Promise.all(
-    files.map(async f => ({ name: f.name, content: await f.text() }))
-  )
-  const resumeBlock = parts
+  const resumeBlock = files
     .map(p => `% --- file: ${p.name} ---\n${p.content}`)
     .join('\n\n')
 
@@ -121,7 +134,7 @@ async function assembleUserMessage(
 
 function App() {
   const [theme, setTheme] = useState<'light' | 'dark'>('light')
-  const [files, setFiles] = useState<File[]>([])
+  const [files, setFiles] = useState<{name: string, content: string}[]>([])
   const [showKey, setShowKey] = useState(false)
   const [providerMode, setProviderMode] = useState<ProviderMode>('openrouter')
   const [model, setModel] = useState<string>(OPENROUTER_MODELS[0].value)
@@ -141,30 +154,67 @@ function App() {
   }
 
   useEffect(() => {
+    async function loadTheme() { 
+      const callLocal = await browser.storage.local.get('theme')
+      setTheme(callLocal.theme === "dark" ? "dark" : "light")
+    }
+    loadTheme()
+  }, [])
+
+  useEffect(() => {
     document.body.setAttribute('data-theme', theme)
   }, [theme])
 
-  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+
+  useEffect(() => {
+    async function loadKey() { 
+      const callLocal = await browser.storage.local.get('apiKey')
+      setApiKey(callLocal.apiKey ? callLocal.apiKey : '') 
+    }
+    loadKey()
+  }, [])
+
+  useEffect(() => {
+    async function loadFiles() { 
+      const callLocal = await browser.storage.local.get('files')
+      setFiles(callLocal.files ? callLocal.files : []) 
+    }
+    loadFiles()
+  }, [])
+
+  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const incoming = Array.from(e.target.files ?? [])
-    setFiles(prev => {
-      const existing = new Set(prev.map(f => f.name))
-      return [...prev, ...incoming.filter(f => !existing.has(f.name))]
-    })
+    const existingFiles = new Set(files.map(f => f.name))
+    const incomingFiles = incoming.filter(f => !existingFiles.has(f.name))
+
+    const newFiles = await Promise.all(
+      incomingFiles.map(async f => ({
+        name: f.name,
+        content: await f.text()
+      }))
+    );
+    const updated = [...files, ...newFiles]
+    setFiles(updated)
     e.target.value = ''
+
+    await browser.storage.local.set({ files: updated })
   }
 
-  function removeFile(index: number) {
-    setFiles(prev => prev.filter((_, i) => i !== index))
+  async function removeFile(index: number) {
+    const updated = files.filter((_, i) => i !== index)
+    setFiles(updated)
+    await browser.storage.local.set({ files: updated })
   }
 
   async function handleTailor() {
+    await browser.storage.local.set({apiKey: apiKey})
     const next: typeof errors = {}
-    if (files.length === 0)   next.files  = 'Upload at least one resume file.'
+    if (files.length === 0) next.files  = 'Upload at least one resume file.'
     if (apiKey.trim() === '') next.apiKey = 'Enter your API key.'
 
-    setErrors(next)                          // replaces the whole object
+    setErrors(next)                          // rweplaces the whole object
     if (Object.keys(next).length > 0) return // any error → stop
-    
+
     const userMessage = await assembleUserMessage(files, jobDescription, instructions)
     const response = await browser.runtime.sendMessage({
       type: 'TAILOR_REQUEST',
@@ -186,7 +236,11 @@ function App() {
         <span className="wordmark">t<span className="wordmark-ai">AI</span>lor</span>
         <button
           className="logo-toggle"
-          onClick={() => setTheme(t => t === 'light' ? 'dark' : 'light')}
+          onClick={() => {
+            const nextTheme = theme === 'light' ? 'dark' : 'light';
+            setTheme(nextTheme);
+            browser.storage.local.set({ theme: nextTheme });
+          }}
           aria-label="toggle theme"
         >
           <img src={theme === 'light' ? tailorLight : tailorDark} height="30" width="30" />
