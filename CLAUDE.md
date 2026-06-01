@@ -109,7 +109,7 @@ Sidebar extension UI (sidebar_action, lives alongside the webpage):
 
 1. Resume upload — dropdown accepting multiple .tex files (primary) or
    a single .pdf (fallback, lower fidelity; user notified of limitation)
-2. Accompa1nying prompt — freeform text instructions to the LLM
+2. Accompanying prompt — freeform text instructions to the LLM
    (e.g. formatting constraints, tone, emphasis)
 3. Model selector — dropdown to choose which LLM / API to call
 4. API key input — user-supplied key stored in browser.storage.local
@@ -164,6 +164,10 @@ server. All LLM calls originate from the extension background script.
 - [x] Persist sidebar state (API key, uploaded resumes, theme) in
   browser.storage.local; refactored files state from File[] →
   {name, content}[] for serializability
+- [x] QUERY agent Stage A — content script reads current tab DOM
+  (textContent) and returns { success, text, url }; sidebar queryPage()
+  finds the active tab and messages it, with try/catch for tabs lacking
+  a content script
 
 ### Problems to Polish
 - [ ] `npm run dev` UI preview: navigate to
@@ -184,10 +188,13 @@ server. All LLM calls originate from the extension background script.
   - [x] Wire LLM API calls from background script (all providers, not just
     Anthropic — adapter router + provider detection)
   - [x] Display tailored output / errors in the output box
-  - [ ] Implement content script to read current tab page content (QUERY)
+  - [x] Implement content script to read current tab page content (QUERY)
+    — Stage A only (raw textContent scrape); LLM distillation is Stage B, pending
   - [ ] Implement PDF fallback via PDF.js with fidelity warning
   - [x] Add browser.storage.local persistence (API key, uploaded files, theme)
-  - [ ] Connect QUERY agent output to CURATE agent input
+  - [~] Connect QUERY agent output to CURATE agent input — raw textContent
+    scrape now flows sidebar → jobDescription → assembleUserMessage → CURATE;
+    LLM distillation (Stage B) still pending
   - [ ] Wire the Download button to save the output .tex
 - Step 3: Author agent context files
   - [x] Write CURATE_c.md — system prompt for resume rewriting
@@ -195,6 +202,31 @@ server. All LLM calls originate from the extension background script.
   - [ ] Test LaTeX output round-trip with Overleaf
 
 ## Session History
+### Session 7 — 2026-06-01
+Wired the QUERY agent's **Stage A**: the content script reads the current tab's
+DOM and returns it to the sidebar. `content.ts` listens for `QUERY_REQUEST` and
+replies `{ success, text, url }` (a wrapper, not a bare string). The sidebar's
+`queryPage()` finds the active tab via `tabs.query({active, currentWindow})` and
+messages its content script with `tabs.sendMessage`, wrapped in try/catch (tabs
+without a content script — about:/PDF/pre-existing — reject with "receiving end
+does not exist").
+
+Auto-read fires at two moments with different contracts: on **mount** (silent,
+best-effort, fills only an empty box) and on the **Tailor click** (required —
+nags via `queryCall` if still empty). A single `jobDescription` state is the
+source of truth; a local `job` var carries freshly-detected text past React's
+state snapshot into the request. Switched the scrape from `innerText` to
+`textContent` (capture generously, let Stage B filter). Also clear field-border
+errors on input. Verified live against a Handshake posting (loaded `.xpi`);
+reconfirmed the content-script-injection-timing gotcha (a tab opened before the
+extension loads has no listener until reloaded).
+
+Committed as `79c34f2` (content.ts, App.tsx, App.css).
+
+Next: QUERY Stage B (distill the `textContent` scrape via the LLM + `QUERY_c.md`);
+optionally `tabs.onActivated` to re-read on tab switch; Download button still
+inert. Known limit: `textContent` misses interaction-gated (click-to-expand) text.
+
 ### Session 6 — 2026-06-01
 Added `browser.storage.local` persistence for three pieces of sidebar state.
 The hand-written `declare const browser` block was widened to type
