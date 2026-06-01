@@ -77,7 +77,7 @@ When writing or explaining code:
 - Do not over-explain HTML/CSS territory the user has confirmed fluent
 
 ## Technology Stack
-Status: PENDING USER APPROVAL
+Status: APPROVED — active (confirmed Session 5)
 
 - Language: TypeScript — type safety catches errors at write-time
   rather than runtime; central to user's learning goal
@@ -153,6 +153,14 @@ server. All LLM calls originate from the extension background script.
 - [x] Build pipeline fixed — `npm run build:xpi` produces a loadable
   `tailor.xpi`; logo images bundled via ES module imports; background
   script switched to `background.page` format; gecko id added
+- [x] Wire sidebar ↔ background message passing (`TAILOR_REQUEST`
+  round-trip); confirmed working against live OpenRouter + Anthropic APIs
+- [x] `.tex` ingestion + delimited user-message assembly
+  (`assembleUserMessage`: resume / job_description / user_instructions)
+- [x] Output display — read-only monospace textarea; shared error/success
+  state, red border on failure, self-clears each run
+- [x] Prune model lists to curated, capable options per provider
+- [x] Author CURATE_c.md (system directive + user-message assembly spec)
 
 ### Problems to Polish
 - [ ] `npm run dev` UI preview: navigate to
@@ -169,18 +177,53 @@ server. All LLM calls originate from the extension background script.
 
 ### Future Steps
 - Step 2: Wire LLM functionality
-  - [ ] Implement content script to read current tab page content
-  - [ ] Implement .tex file ingestion and bundling
+  - [x] Implement .tex file ingestion and bundling
+  - [x] Wire LLM API calls from background script (all providers, not just
+    Anthropic — adapter router + provider detection)
+  - [x] Display tailored output / errors in the output box
+  - [ ] Implement content script to read current tab page content (QUERY)
   - [ ] Implement PDF fallback via PDF.js with fidelity warning
-  - [ ] Wire Anthropic API calls from background script
   - [ ] Add browser.storage.local persistence for API key
   - [ ] Connect QUERY agent output to CURATE agent input
+  - [ ] Wire the Download button to save the output .tex
 - Step 3: Author agent context files
+  - [x] Write CURATE_c.md — system prompt for resume rewriting
   - [ ] Write QUERY_c.md — system prompt for job posting extraction
-  - [ ] Write CURATE_c.md — system prompt for resume rewriting
   - [ ] Test LaTeX output round-trip with Overleaf
 
 ## Session History
+### Session 5 — 2026-06-01
+Wired the LLM round-trip end to end (Step 2 core). The sidebar's
+`handleTailor` now reads uploaded `.tex` files (`File.text()` + `Promise.all`),
+assembles a delimited user message (`<resume>` / `<job_description>` /
+`<user_instructions>`), and sends a `TAILOR_REQUEST` to the background router
+via `browser.runtime.sendMessage`. Confirmed working against live OpenRouter
+and Anthropic endpoints — a 401 from a fake key proved the full chain
+(message passing → adapter routing → provider detection → fetch → response
+round-trip). Tailored LaTeX / errors now render in a read-only monospace
+output textarea (shared error/success state, red border on failure).
+
+Authored CURATE_c.md: the stable system directive (reframe-not-fabricate,
+LaTeX preservation, strict output hygiene — no markdown fences/commentary)
+plus a spec for how the user message is assembled in code. `CURATE_SYSTEM_PROMPT`
+in App.tsx mirrors that directive.
+
+Teaching highlight: debugged a "nothing renders" bug that was actually React
+state immutability — mutating the `errors` object already held in state and
+re-setting the same reference made React bail out of the re-render (`Object.is`
+reference comparison). Fixed by spreading into a new object
+(`setErrors({ ...next, llmCall })`). Clarified that mutating a *fresh* local
+object before its first `setState` is fine; the rule only bites when you mutate
+an object already in state.
+
+Also pruned the model lists (dropped tiny/speculative free models) and
+centered the provider toggle button text.
+
+Next: pick up the remaining Step 2 items — API key persistence
+(`storage.local`), the QUERY content script, PDF.js fallback, and wiring the
+Download button. GROWTH.md / LESSONPLAN.md were missing this session (lost off
+iCloud, never committed since gitignored) and were recreated.
+
 ### Session 4 — 2026-05-30
 Resolved build pipeline and Firefox extension loading issues. Root cause
 of all "can't find file" errors: iCloud Drive interferes with Firefox's
