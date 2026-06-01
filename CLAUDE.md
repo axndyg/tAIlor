@@ -109,7 +109,7 @@ Sidebar extension UI (sidebar_action, lives alongside the webpage):
 
 1. Resume upload — dropdown accepting multiple .tex files (primary) or
    a single .pdf (fallback, lower fidelity; user notified of limitation)
-2. Accompanying prompt — freeform text instructions to the LLM
+2. Accompa1nying prompt — freeform text instructions to the LLM
    (e.g. formatting constraints, tone, emphasis)
 3. Model selector — dropdown to choose which LLM / API to call
 4. API key input — user-supplied key stored in browser.storage.local
