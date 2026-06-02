@@ -23,19 +23,25 @@ declare const browser: {
     runtime: {
       sendMessage(message: unknown): Promise<TailorResponse>
       };
-    storage: { 
-      local: { 
-          get(key: string): 
+    storage: {
+      local: {
+          get(key: string):
             Promise<{
               apiKey?: string;
               files?: {name: string, content: string}[];
-              theme?: string;    
-            }> 
-          set(items: { 
+              theme?: string;
+              providerMode?: ProviderMode;
+              model?: string;
+              instructions?: string;
+            }>
+          set(items: {
               apiKey?: string;
               files?: {name: string, content: string}[];
-              theme?: string; 
-             }): 
+              theme?: string;
+              providerMode?: ProviderMode;
+              model?: string;
+              instructions?: string;
+             }):
             Promise<void>
       }
     };
@@ -52,18 +58,15 @@ declare const browser: {
 // New concept: const with 'as const' — freezes the array so TypeScript
 // infers literal types instead of widening to string[].
 const OPENROUTER_MODELS = [
-  // Free tier — no cost, rate-limited. Curated to models large enough to
-  // preserve LaTeX structure reliably.
-  { value: 'deepseek/deepseek-chat:free',             label: 'DeepSeek V3',            free: true  },
-  { value: 'deepseek/deepseek-r1:free',               label: 'DeepSeek R1',            free: true  },
-  { value: 'google/gemma-3-27b-it:free',              label: 'Gemma 3 27B',            free: true  },
+  // Free tier — no cost, rate-limited. Pruned to the only free model that
+  // reliably returns usable LaTeX in testing; the others (DeepSeek V3/R1,
+  // Gemma 3 27B) failed to follow the structure/output contract.
   { value: 'openai/gpt-oss-120b:free',                label: 'GPT-OSS 120B',           free: true  },
   // Paid tier — one strong option per family
   { value: 'anthropic/claude-opus-4',                 label: 'Claude Opus 4',          free: false },
   { value: 'anthropic/claude-sonnet-4',               label: 'Claude Sonnet 4',        free: false },
   { value: 'openai/gpt-4o',                           label: 'GPT-4o',                 free: false },
   { value: 'google/gemini-2.5-pro',                   label: 'Gemini 2.5 Pro',         free: false },
-  { value: 'meta-llama/llama-3.1-405b-instruct',      label: 'Llama 3.1 405B',         free: false },
   { value: 'mistralai/mistral-large',                 label: 'Mistral Large',          free: false },
 ] as const
 
@@ -77,8 +80,6 @@ const DIRECT_MODELS = [
   // Google
   { value: 'gemini-2.5-pro',          label: 'Gemini 2.5 Pro',      provider: 'Google'    },
   { value: 'gemini-2.5-flash',        label: 'Gemini 2.5 Flash',    provider: 'Google'    },
-  // Mistral
-  { value: 'mistral-large-latest',    label: 'Mistral Large',       provider: 'Mistral'   },
   // Cohere
   { value: 'command-r-plus',          label: 'Command R+',          provider: 'Cohere'    },
   // Groq
@@ -118,12 +119,21 @@ Hard constraints:
 - Do not rename sections, reorder sections, or change the document structure.
 
 LaTeX preservation:
-- The resume is provided as a single .tex file or a collection of .tex files.
+- The resume is provided as one or more .tex files. Each file is labeled in the user message by a comment line of the form "% --- file: <filename> ---" immediately preceding its contents.
+- Produce a SINGLE, self-contained .tex file that compiles on its own in Overleaf with no external file dependencies.
+- Resolve modular structure by inlining. Whenever a file references another provided file via \\input{...} or \\include{...}, replace that command, in place, with the full body of the referenced file. Match references to files by basename — ignore any directory path and the optional .tex extension. For example, \\input{_header} is satisfied by the file _header.tex, and \\input{sections/education} is satisfied by education.tex.
+- A referenced file may itself contain \\input/\\include of other provided files; resolve these recursively until no reference to a provided file remains.
+- If an \\input/\\include points to a file that was NOT provided, leave the command untouched.
+- The "main" file is the one containing \\documentclass and \\begin{document}; it defines the overall structure. Inline the other provided files into it at their reference points.
 - Preserve the document's preamble, packages, custom commands/macros, section structure, and ordering exactly.
 - Modify only the text content of bullets, summaries, and descriptions.
-- Produce a single resulting .tex file. If multiple files were provided, merge them into one self-contained document that compiles independently.
 
-Output format — read carefully:
+Length and density — hard constraints:
+- The final document MUST fit on exactly ONE page. This is non-negotiable. If content would overflow onto a second page, tighten wording until it fits — shorten or merge the least job-relevant bullets first. Never reduce the document to a partial page by deleting whole sections; preserve all sections and entries while trimming prose.
+- Each bullet must cover at least 80% of the available line width — never write a bullet so short it leaves excessive trailing white space on a single line.
+- If a bullet wraps to a second line, that second line must also cover at least 80% of the line width. Never leave a second line that contains only one to three words.
+- If a wrapped bullet would produce a weak second line, either expand the phrasing to fill it properly (using real, non-fabricated detail from the original resume), or condense the bullet to fit cleanly on one line.
+- Countable proxy for line width (you cannot see the rendered page, so reason in words): assuming a standard single-column resume at roughly 10–11pt with typical margins, one full line holds about 14–18 words. Use this to self-check — a bullet occupying a single line should land near 14–18 words; a bullet that wraps should leave its final line in that same 14–18 word range, never trailing off after 1–3 words. If the document's geometry clearly differs (smaller font, wider text block, indented bullets), or the user instructions specify a different target, adjust this word count proportionally.
 Output only the raw LaTeX source of the single resulting .tex file. No markdown code fences. No preamble sentence, no commentary, no explanation, no closing remark. Your entire response, from the first character to the last, must be valid LaTeX that compiles as-is in Overleaf.`
 
 async function assembleUserMessage(
@@ -160,13 +170,31 @@ function App() {
   const [jobDescription, setJobDescription]= useState<string>('')
 
   const [output, setOutput] = useState<string>('')
-  
+
+  // Tailor-run progress. `loading` disables the button + drives the spinner;
+  // `status` is the human-readable phase shown beside it ("Reading page…" etc).
+  const [loading, setLoading] = useState<boolean>(false)
+  const [status, setStatus] = useState<string>('')
+
+  // Whether the uploaded-file list is folded away (useful when many files).
+  const [filesCollapsed, setFilesCollapsed] = useState<boolean>(false)
+
+  // Animated ". . ." shown in the output box while the model is working.
+  const [dots, setDots] = useState<string>('')
+
   const [errors, setErrors] = useState<{ files?: string; apiKey?: string; llmCall?: string; queryCall?: string }>({})
 
 
   function switchProvider(mode: ProviderMode) {
     setProviderMode(mode)
-    setModel(mode === 'openrouter' ? OPENROUTER_MODELS[0].value : DIRECT_MODELS[0].value)
+    const nextModel = mode === 'openrouter' ? OPENROUTER_MODELS[0].value : DIRECT_MODELS[0].value
+    setModel(nextModel)
+    browser.storage.local.set({ providerMode: mode, model: nextModel })
+  }
+
+  function selectModel(value: string) {
+    setModel(value)
+    browser.storage.local.set({ model: value })
   }
 
   useEffect(() => {
@@ -180,6 +208,21 @@ function App() {
   useEffect(() => {
     document.body.setAttribute('data-theme', theme)
   }, [theme])
+
+  // While a tailor run is in flight, cycle ". " → ". . " → ". . . " in the
+  // output box so it's clear the model is still working. setInterval ticks the
+  // frame; the cleanup clears it when `loading` flips back to false.
+  useEffect(() => {
+    if (!loading) { setDots(''); return }
+    const frames = ['', '.', '. .', '. . .']
+    let i = 0
+    setDots(frames[0])
+    const id = setInterval(() => {
+      i = (i + 1) % frames.length
+      setDots(frames[i])
+    }, 550)
+    return () => clearInterval(id)
+  }, [loading])
 
 
   useEffect(() => {
@@ -196,6 +239,26 @@ function App() {
       setFiles(callLocal.files ? callLocal.files : [])
     }
     loadFiles()
+  }, [])
+
+  useEffect(() => {
+    async function loadProvider() {
+      const savedMode  = (await browser.storage.local.get('providerMode')).providerMode
+      const savedModel = (await browser.storage.local.get('model')).model
+      if (savedMode) setProviderMode(savedMode)
+      // Fall back to the saved mode's default model if no model was stored.
+      if (savedModel) setModel(savedModel)
+      else if (savedMode === 'direct') setModel(DIRECT_MODELS[0].value)
+    }
+    loadProvider()
+  }, [])
+
+  useEffect(() => {
+    async function loadInstructions() {
+      const callLocal = await browser.storage.local.get('instructions')
+      setInstructions(callLocal.instructions ? callLocal.instructions : '')
+    }
+    loadInstructions()
   }, [])
 
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -243,42 +306,77 @@ function App() {
   }
 
 
+  // Saves the current output to a .tex file. Builds a Blob, points a temporary
+  // <a download> at an object URL, clicks it, then revokes the URL. Only valid
+  // output (a successful response, no error showing) is downloadable.
+  function handleDownload() {
+    if (!output || errors.llmCall) return
+
+    // Name after the first uploaded file's basename, else a sensible default.
+    const base = files[0]?.name.replace(/\.(tex|pdf)$/i, '') ?? 'resume'
+    const filename = `${base}_tailored.tex`
+
+    const blob = new Blob([output], { type: 'text/x-tex' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = filename
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  // Friendly label for the currently-selected model, for the progress text.
+  function modelLabel(): string {
+    const all = [...OPENROUTER_MODELS, ...DIRECT_MODELS]
+    return all.find(m => m.value === model)?.label ?? model
+  }
+
   async function handleTailor() {
+    if (loading) return                      // ignore re-clicks mid-run
     await browser.storage.local.set({apiKey: apiKey})
     const next: typeof errors = {}
     if (files.length === 0) next.files  = 'Upload at least one resume file.'
     if (apiKey.trim() === '') next.apiKey = 'Enter your API key.'
 
-    // The box is the source of truth. If it's empty, lazily auto-read the page
-    // before giving up. Hold the result in a LOCAL var: setJobDescription won't
-    // update the `jobDescription` variable within this same run (React state is
-    // a snapshot), so the request below must read the local value, not state.
-    let job = jobDescription.trim()
-    if (job === '' && files.length !== 0 && apiKey.trim() !== '') {
-      const detected = await queryPage()
-      if (detected) {
-        job = detected
-        setJobDescription(detected)   // reflect it in the box for the user
-      } else {
-        next.queryCall = 'No job description detected — paste it below.'
+    setLoading(true)
+    try {
+      // The box is the source of truth. If it's empty, lazily auto-read the page
+      // before giving up. Hold the result in a LOCAL var: setJobDescription won't
+      // update the `jobDescription` variable within this same run (React state is
+      // a snapshot), so the request below must read the local value, not state.
+      let job = jobDescription.trim()
+      if (job === '' && files.length !== 0 && apiKey.trim() !== '') {
+        setStatus('Reading the current page…')
+        const detected = await queryPage()
+        if (detected) {
+          job = detected
+          setJobDescription(detected)   // reflect it in the box for the user
+        } else {
+          next.queryCall = 'No job description detected — paste it below.'
+        }
       }
-    }
 
-    setErrors(next)                          // replaces the whole object
-    if (Object.keys(next).length > 0) return // any error → stop
+      setErrors(next)                          // replaces the whole object
+      if (Object.keys(next).length > 0) return // any error → stop
 
-    const userMessage = await assembleUserMessage(files, job, instructions)
-    const response = await browser.runtime.sendMessage({
-      type: 'TAILOR_REQUEST',
-      model, providerMode, apiKey,
-      systemPrompt: CURATE_SYSTEM_PROMPT,   // the constant
-      userMessage,
-    })
-    if (response.success) { 
-      setOutput(response.text ?? '')
-    }
-    else { 
-      setErrors({ ...next, llmCall: response.error ?? '' })
+      setStatus(`Tailoring with ${modelLabel()}…`)
+      const userMessage = await assembleUserMessage(files, job, instructions)
+      const response = await browser.runtime.sendMessage({
+        type: 'TAILOR_REQUEST',
+        model, providerMode, apiKey,
+        systemPrompt: CURATE_SYSTEM_PROMPT,   // the constant
+        userMessage,
+      })
+      if (response.success) {
+        setOutput(response.text ?? '')
+      }
+      else {
+        setErrors({ ...next, llmCall: response.error ?? '' })
+      }
+    } finally {
+      // Always release the button + clear the phase text, success or failure.
+      setLoading(false)
+      setStatus('')
     }
   }
 
@@ -311,24 +409,39 @@ function App() {
           onChange={handleFileChange}
         />
         {files.length > 0 && (
-          <ul className="file-list">
-            {files.map((file, i) => (
-              <li key={i}>
-                <span>{file.name}</span>
-                <button onClick={() => removeFile(i)} aria-label={`remove ${file.name}`}>×</button>
-              </li>
-            ))}
-          </ul>
+          <>
+            <button
+              className="files-bar"
+              onClick={() => setFilesCollapsed(c => !c)}
+              aria-expanded={!filesCollapsed}
+            >
+              <span className={`files-chevron ${filesCollapsed ? 'collapsed' : ''}`}>▾</span>
+              <span>{files.length} file{files.length > 1 ? 's' : ''}</span>
+            </button>
+            {!filesCollapsed && (
+              <ul className="file-list">
+                {files.map((file, i) => (
+                  <li key={i}>
+                    <span>{file.name}</span>
+                    <button onClick={() => removeFile(i)} aria-label={`remove ${file.name}`}>×</button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </>
         )}
          {errors.files && <p className="field-error">{errors.files}</p>}
       </section>
-
-      <section>
-        <span className="section-label">Tailor Instructions</span>
-        <textarea 
-          placeholder="e.g. emphasize leadership, keep to one page..."
-          value={instructions}
-          onChange={e => setInstructions(e.target.value)} 
+      
+      <section className="fallback-section">
+        <span className="section-label">Job Description</span>
+        {errors.queryCall && (
+          <span className="fallback-label">⚠ {errors.queryCall}</span>
+        )}
+        <textarea
+          placeholder="paste job description here..."
+          value={jobDescription}
+          onChange={e => setJobDescription(e.target.value)}
         />
       </section>
 
@@ -347,7 +460,7 @@ function App() {
 
         <span className="section-label">Model</span>
         {providerMode === 'openrouter' ? (
-          <select value={model} onChange={e => setModel(e.target.value)}>
+          <select value={model} onChange={e => selectModel(e.target.value)}>
             <optgroup label="★ Free">
               {OPENROUTER_MODELS.filter(m => m.free).map(m => (
                 <option key={m.value} value={m.value}>{m.label}</option>
@@ -360,7 +473,7 @@ function App() {
             </optgroup>
           </select>
         ) : (
-          <select value={model} onChange={e => setModel(e.target.value)}>
+          <select value={model} onChange={e => selectModel(e.target.value)}>
             {Array.from(groupBy(DIRECT_MODELS, 'provider')).map(([provider, models]) => (
               <optgroup key={provider} label={provider}>
                 {models.map(m => (
@@ -405,29 +518,41 @@ function App() {
         {errors.apiKey && <p className="field-error">{errors.apiKey}</p>}
       </section>
 
-      <section className="fallback-section">
-        <span className="section-label">Job Description</span>
-        {errors.queryCall && (
-          <span className="fallback-label">⚠ {errors.queryCall}</span>
-        )}
+          
+      <section>
+        <span className="section-label">Tailor Instructions</span>
         <textarea
-          placeholder="paste job description here..."
-          value={jobDescription}
-          onChange={e => setJobDescription(e.target.value)}
+          placeholder="e.g. emphasize leadership, keep to one page..."
+          value={instructions}
+          onChange={e => {
+            setInstructions(e.target.value)
+            browser.storage.local.set({ instructions: e.target.value })
+          }}
         />
       </section>
 
-      <button className="primary-btn" onClick={() =>  handleTailor()}>Tailor Resume</button>
+      <button className="primary-btn" onClick={() => handleTailor()} disabled={loading}>
+        {loading ? (
+          <span className="btn-loading">
+            <span className="spinner" />
+            {status || 'Tailoring…'}
+          </span>
+        ) : 'Tailor Resume'}
+      </button>
 
       <section>
         <span className="section-label">Output</span>
-        <textarea 
+        <textarea
         className={`output-area ${errors.llmCall ? "field-border-error" : ""}`}
-        value={errors.llmCall ? errors.llmCall : output} 
-        readOnly 
+        value={errors.llmCall ? errors.llmCall : (loading ? dots : output)}
+        readOnly
         />
 
-        <button className="secondary-btn">↓ Download</button>
+        <button
+          className="secondary-btn"
+          onClick={handleDownload}
+          disabled={!output || !!errors.llmCall}
+        >↓ Download</button>
       </section>
 
     </div>
