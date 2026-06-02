@@ -198,23 +198,6 @@ function App() {
     loadFiles()
   }, [])
 
-  // On open, auto-read the current tab as the job description (design B): fill
-  // the editable box so the user can eyeball/edit before tailoring. If the page
-  // can't be read, surface an error asking them to paste it instead.
-  // On open, the auto-read is a *convenience fill*, not the primary path:
-  // pasting wins. So we only populate an EMPTY box, and stay silent if the read
-  // fails (no scary warning at rest — the user can just paste).
-  useEffect(() => {
-    async function detectJob() {
-      const text = await queryPage()
-      if (!text) return
-      // Functional updater reads the *current* value, not the stale mount-time
-      // snapshot — so we never clobber text the user pasted while we were reading.
-      setJobDescription(prev => (prev === '' ? text : prev))
-    }
-    detectJob()
-  }, [])
-
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const incoming = Array.from(e.target.files ?? [])
     const existingFiles = new Set(files.map(f => f.name))
