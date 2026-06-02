@@ -33,6 +33,7 @@ declare const browser: {
               providerMode?: ProviderMode;
               model?: string;
               instructions?: string;
+              filesCollapsed?: boolean;
             }>
           set(items: {
               apiKey?: string;
@@ -41,6 +42,7 @@ declare const browser: {
               providerMode?: ProviderMode;
               model?: string;
               instructions?: string;
+              filesCollapsed?: boolean;
              }):
             Promise<void>
       }
@@ -263,6 +265,14 @@ function App() {
     loadInstructions()
   }, [])
 
+  useEffect(() => {
+    async function loadFilesCollapsed() {
+      const callLocal = await browser.storage.local.get('filesCollapsed')
+      setFilesCollapsed(callLocal.filesCollapsed === true)
+    }
+    loadFilesCollapsed()
+  }, [])
+
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const incoming = Array.from(e.target.files ?? [])
     const existingFiles = new Set(files.map(f => f.name))
@@ -429,7 +439,11 @@ function App() {
           <>
             <button
               className="files-bar"
-              onClick={() => setFilesCollapsed(c => !c)}
+              onClick={() => {
+                const nextCollapsed = !filesCollapsed
+                setFilesCollapsed(nextCollapsed)
+                browser.storage.local.set({ filesCollapsed: nextCollapsed })
+              }}
               aria-expanded={!filesCollapsed}
             >
               <span className={`files-chevron ${filesCollapsed ? 'collapsed' : ''}`}>▾</span>

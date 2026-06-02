@@ -6,13 +6,16 @@
 
     "browser_specific_settings": {
         "gecko": {
-            "id": "tailor@mozilla.org"
+            "id": "tailor@axndyg.github.io",
+            "data_collection_permissions": {
+                "required": ["personallyIdentifyingInfo", "websiteContent"]
+            }
         }
     },
 
     "icons": {
-        "48": "tailor_dark.png",
-        "96": "tailor_dark.png"
+        "48": "icon-48.png",
+        "96": "icon-96.png"
     },
 
     "sidebar_action": {
@@ -23,7 +26,7 @@
 
     "browser_action": {
         "default_title": "Open tAIlor",
-        "default_icon": "tailor_light.png"
+        "default_icon": "icon-32.png"
     },
 
     "permissions": [
