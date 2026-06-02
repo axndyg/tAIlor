@@ -10,10 +10,20 @@
         }
     },
 
+    "icons": {
+        "48": "tailor_dark.png",
+        "96": "tailor_dark.png"
+    },
+
     "sidebar_action": {
         "default_title": "tAIlor",
         "default_panel": "src/sidebar/sidebar.html",
-        "open_at_install": true
+        "open_at_install": false
+    },
+
+    "browser_action": {
+        "default_title": "Open tAIlor",
+        "default_icon": "tailor_light.png"
     },
 
     "permissions": [
@@ -30,12 +40,5 @@
 
     "background": {
         "page": "src/background/background.html"
-    },
-
-    "content_scripts": [
-        {
-            "matches": ["*://*/*"],
-            "js": ["src/content/content.ts"]
-        }
-    ]
+    }
 }

@@ -9,6 +9,17 @@ declare const browser: {
       ): void
     }
   }
+  // The toolbar button. onClicked fires only when no default_popup is set.
+  browserAction: {
+    onClicked: {
+      addListener(cb: () => void): void
+    }
+  }
+  // The sidebar. toggle() opens it if closed, closes it if open — and must be
+  // called from a user gesture, which a toolbar click qualifies as.
+  sidebarAction: {
+    toggle(): void
+  }
 }
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -192,6 +203,12 @@ browser.runtime.onMessage.addListener((message) => {
       success: false,
       error: err instanceof Error ? err.message : String(err),
     }))
+})
+
+// Toolbar button → toggle the sidebar. This is what makes tAIlor appear only
+// when summoned, instead of auto-opening on every tab.
+browser.browserAction.onClicked.addListener(() => {
+  browser.sidebarAction.toggle()
 })
 
 console.debug('[tAIlor] background ready — router loaded')

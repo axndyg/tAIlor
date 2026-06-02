@@ -52,6 +52,8 @@ declare const browser: {
       }): 
       Promise<{ id?: number }[]>
       sendMessage(tabId: number, message: unknown): Promise<QueryResponse>
+      // Injects a script file into a tab on demand (activeTab permission).
+      executeScript(tabId: number, details: { file: string }): Promise<unknown[]>
     }
 }
 
@@ -288,20 +290,35 @@ function App() {
 
   // QUERY agent, Stage A caller: ask the active tab's content script to read
   // its DOM. Returns the page text, or undefined if we couldn't read it.
+  //
+  // The content script is no longer injected into every page declaratively —
+  // it's injected on demand here. We try messaging first; if no listener
+  // answers (first read on this tab, or the page was navigated since), we
+  // executeScript to inject it, then retry once. This keeps tAIlor off every
+  // site until the moment it actually needs to read one.
   async function queryPage(): Promise<string | undefined> {
     const activeTab = await browser.tabs.query({ active: true, currentWindow: true })
     // ?. handles an empty array; === undefined (not !tabId) so a real id of 0 survives.
     const tabId = activeTab[0]?.id
     if (tabId === undefined) return
 
-    try {
-      const response = await browser.tabs.sendMessage(tabId, { type: 'QUERY_REQUEST' })
+    async function ask(): Promise<string | undefined> {
+      const response = await browser.tabs.sendMessage(tabId!, { type: 'QUERY_REQUEST' })
       return response.success ? response.text : undefined
+    }
+
+    try {
+      return await ask()
     } catch {
-      // sendMessage rejects with "receiving end does not exist" when the page
-      // has no content script — about: pages, PDFs, or a tab opened before the
-      // extension loaded. Treat as "couldn't read" → fall back to manual paste.
-      return undefined
+      // No content script listening yet → inject it, then ask once more.
+      try {
+        await browser.tabs.executeScript(tabId, { file: 'src/content/content.js' })
+        return await ask()
+      } catch {
+        // Injection itself failed: about:/PDF/view-source pages, addons.mozilla.org,
+        // or activeTab not granted for this tab. Fall back to manual paste.
+        return undefined
+      }
     }
   }
 
@@ -405,7 +422,7 @@ function App() {
           id="myFile"
           name="filename"
           multiple
-          accept=".tex,.pdf"
+          accept=".tex"
           onChange={handleFileChange}
         />
         {files.length > 0 && (
