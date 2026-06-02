@@ -168,6 +168,28 @@ server. All LLM calls originate from the extension background script.
   (textContent) and returns { success, text, url }; sidebar queryPage()
   finds the active tab and messages it, with try/catch for tabs lacking
   a content script
+- [x] CURATE prompt: composite/self-contained .tex — inline \input/\include
+  by basename; one-page hard constraint; bullet-density rules (≥80% width,
+  no orphan wrapped lines, ~14–18 word countable proxy). Mirrored in CURATE_c.md.
+- [x] Foldable file bar (collapse state persisted)
+- [x] Persist providerMode, model, instructions, filesCollapsed in storage.local
+- [x] Tailor progress UX: button spinner + phase text ("Reading page…",
+  "Tailoring with …") + looping ". . ." animation in the output box
+- [x] Download button wired — saves output as <base>_tailored.tex via
+  Blob/object-URL
+- [x] Pruned model lists (free tier → GPT-OSS only; dropped Llama 405B,
+  Mistral direct, non-working free models)
+- [x] Toolbar button (browser_action) toggles the sidebar via
+  sidebarAction.toggle(); removed open_at_install auto-open
+- [x] On-demand content-script injection (tabs.executeScript,
+  try-message→inject→retry) replacing the declarative *://*/* match;
+  relies on activeTab
+- [x] Extension icons (48/96/32 in public/); extension ID →
+  tailor@axndyg.github.io; data_collection_permissions declared
+- [x] GitHub "Source" footer link; centered Tailor button text
+- [x] Added MIT LICENSE; rewrote README.md with the model-access clarification
+- [x] Validated with web-ext lint (0 errors); drafted AMO listing copy;
+  began AMO submission
 
 ### Problems to Polish
 - [ ] `npm run dev` UI preview: navigate to
@@ -181,6 +203,12 @@ server. All LLM calls originate from the extension background script.
   and --logo-yang values reversed in the light theme block in App.css)
 - [ ] Dock button only affects localhost preview — Firefox controls
   actual sidebar panel position; no WebExtension API for this
+- [ ] AMO slug `tailor` is globally taken; slug edits revert if any field
+  in the form section is invalid (use a unique slug, finish the wizard then
+  edit from Manage)
+- [ ] data_collection_permissions categories (personallyIdentifyingInfo,
+  websiteContent) are a self-declaration — revisit if the data flow changes
+- [ ] LICENSE copyright reads `axndyg` (handle), not legal name
 
 ### Future Steps
 - Step 2: Wire LLM functionality
@@ -195,13 +223,69 @@ server. All LLM calls originate from the extension background script.
   - [~] Connect QUERY agent output to CURATE agent input — raw textContent
     scrape now flows sidebar → jobDescription → assembleUserMessage → CURATE;
     LLM distillation (Stage B) still pending
-  - [ ] Wire the Download button to save the output .tex
+  - [x] Wire the Download button to save the output .tex
 - Step 3: Author agent context files
   - [x] Write CURATE_c.md — system prompt for resume rewriting
   - [ ] Write QUERY_c.md — system prompt for job posting extraction
   - [ ] Test LaTeX output round-trip with Overleaf
 
 ## Session History
+### Session 9 — 2026-06-01
+Publish-readiness pass. Added a `browser_action` toolbar button whose
+`onClicked` calls `sidebarAction.toggle()`, and set `open_at_install: false` —
+the sidebar no longer auto-opens on every tab; you summon it from the toolbar.
+Converted QUERY from a declarative `*://*/*` content script to **on-demand
+injection**: `queryPage()` now tries `tabs.sendMessage` first and, on failure,
+`tabs.executeScript`s `src/content/content.js` then retries — so nothing runs on
+a page until you ask it to read one (relies on `activeTab`, not a broad host
+match). Kept `content.ts` bundled despite leaving the manifest via Vite's
+`additionalInputs`.
+
+Fixed the missing extension image: the build flattens manifest-referenced assets
+to the **dist root without rewriting the manifest path**, so `logo/…` references
+were broken — switched to basenames and added real 48/96/32px icons in `public/`
+(Vite copies `public/` verbatim to dist root). Changed the extension ID from the
+reserved `tailor@mozilla.org` (AMO-rejected) to `tailor@axndyg.github.io`, and
+declared `data_collection_permissions` (personallyIdentifyingInfo + websiteContent).
+Added a bottom-right GitHub "Source" footer link, centered the Tailor button,
+added an MIT `LICENSE`. `web-ext lint` → 0 errors (2 benign React innerHTML
+warnings from the bundled runtime). Drafted AMO listing copy and started
+submission.
+
+Committed across this session: `0aebb6f` (toggle + on-demand injection + icons),
+`08da762` (publish-prep manifest/icons/persistence), `2c83bc5` (footer + button),
+`ef42976` (MIT LICENSE).
+
+Next: finish AMO submission (unique slug, source-code upload, paste the privacy
+paragraph). Then QUERY Stage B + `QUERY_c.md`, PDF.js fallback. Optional real
+name in LICENSE.
+
+### Session 8 — 2026-06-01
+Feature batch (user-directed, explicitly non-teaching). CURATE prompt hardened:
+inline `\input`/`\include` of provided files by **basename** into one
+self-contained `.tex`; **one-page** hard constraint; **bullet-density** rules
+(≥80% line width, no 1–3 word orphan wrapped lines) plus a **countable proxy**
+(~14–18 words per full line) since the model can't see rendered geometry.
+Mirrored in `CURATE_c.md`. Sidebar: foldable file bar; persisted
+`providerMode`/`model`/`instructions`/`filesCollapsed`; tailor progress
+(button spinner + phase text + looping `". . ."` in the output box); wired the
+Download button to save `<base>_tailored.tex`. Pruned model lists. Rewrote
+`README.md` around the model-access clarification.
+
+Two insights logged. (1) One-page/density are **prompt guidance, not
+guarantees** — the model operates on tokens, never the rendered PDF, so it
+estimates layout; a true guarantee needs a compile-measure-retry loop (WASM
+LaTeX + PDF.js page count / `Overfull/Underfull \hbox` log parsing) — a future
+milestone. (2) Consumer chat subscriptions (Claude Pro, ChatGPT Plus) are **not
+API-accessible** and cannot be wired into this or any extension — only the three
+API lanes work (free OpenRouter / paid OpenRouter / direct provider key). The
+project is therefore a bring-your-own-key tool with a free fallback, which is a
+legitimate, practical product.
+
+Committed as `7fcce30` (composite/density/progress/persistence/pruning/README).
+
+Next: the publish work (became Session 9).
+
 ### Session 7 — 2026-06-01
 Wired the QUERY agent's **Stage A**: the content script reads the current tab's
 DOM and returns it to the sidebar. `content.ts` listens for `QUERY_REQUEST` and
