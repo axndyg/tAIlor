@@ -6,6 +6,8 @@ tab, and get back a single, Overleaf-ready `.tex` rewritten to foreground the
 strengths that matter for that role — without inventing experience or touching
 your document's structure.
 
+Live on the [Firefox Add-Ons](https://addons.mozilla.org/en-US/firefox/addon/tailor2/).
+
 ---
 
 ## ⚠️ Read this first: how model access works
